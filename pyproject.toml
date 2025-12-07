@@ -1,0 +1,24 @@
+[project]
+name = "jailbreak-llm"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.11,<3.12"  # Change to 3.11
+dependencies = [
+    "ipykernel>=7.1.0",
+    "matplotlib",
+    "numpy",
+    "pandas",
+    "torch",
+    "torchvision",
+]
+
+# Explicit index configuration - torch and torchvision MUST come from ROCm index
+[[tool.uv.index]]
+name = "pytorch-rocm"
+url = "https://download.pytorch.org/whl/rocm6.4"  # change to 6.4
+explicit = true  # This makes it explicit-only
+
+[tool.uv.sources]
+torch = { index = "pytorch-rocm" }
+torchvision = { index = "pytorch-rocm" }
