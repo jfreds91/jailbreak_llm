@@ -78,18 +78,19 @@ cd ~/your-project
 
 # Create Python 3.11 virtual environment with uv
 uv venv --python 3.11
+python3 -m ensurepip
 
 # Activate the venv
 source .venv/bin/activate
 
 # Use pip (from within the venv) to install PyTorch
-.venv/bin/pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/rocm6.4
+python3 -m pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/rocm6.4
 
 # Install other dependencies
-.venv/bin/pip install ipykernel matplotlib numpy pandas
+python3 -m pip install ipykernel matplotlib numpy pandas heretic-llm
 
 # OR install other dependencies with uv
-uv pip install ipykernel matplotlib numpy pandas
+uv pip install ipykernel matplotlib numpy pandas heretic-llm
 ```
 
 ### Verify Installation:
@@ -120,6 +121,15 @@ GPU count: 1
 GPU name: AMD Radeon RX 9700 XT
 Computation successful on: cuda:0
 ```
+
+### Set up HuggingFace to use the right cache location. It's going to store a lot of data here, so make sure it's a big drive
+```export HF_HOME=/home/bigdrive/.cache```
+
+### Run heretic
+```heretic Qwen/Qwen3-14B-FP8```
+
+### register into pykernel
+```python -m ipykernel install --user --name=jailbreak_llm --display-name "Python (jailbreak_llm)"```
 
 ---
 
