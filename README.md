@@ -210,3 +210,27 @@ sudo ln -s /usr/share/libdrm/amdgpu.ids /opt/amdgpu/share/libdrm/amdgpu.ids
 - [ ] `torch.__version__` contains `rocm6.4`
 - [ ] `torch.cuda.is_available()` returns `True`
 - [ ] Can create tensors on GPU: `torch.tensor([1.0]).cuda()`
+
+# Notes
+
+### FP8 weights
+- 1B FP8 weights is 1gb plus some overhead. A 16gb GPU can load a 14B FP8 model, but it will not have much room to allocate for the KV cache, so we have to be careful 
+- FP8 weights are getting upcast dynamically to bf16 in order to do matrix math. This is happening in a custom FP8LinearLayer.
+    - this is necessary because until ROCm 6.5, FP8 operations are not supported. The latest Pytorch version is compiled against ROCm 6.4. The latest ROCm library version is 7.1 and is backward compatible with pytorch
+- I modified heretic (in site-packages) to determine which layers are abliterable, and to cast them to bf16 automatically, just one time. This increases RAM requirements by 30%. We save the mixed-precision model
+
+### GGUF
+- note I had to set the LLAMA_CACHE env var to make it save to the right place.
+- I also tried downloading a 14B, and then 32B, parameter model using GGUF. This is a single-file format which is used with `llama.cpp`. GGUF supports multiple quantizations, and I opted for a FP8 one (Q8_0). I was able to run both locally with mixed results:
+- 14B: I found that I could fit 30 layers in vRAM, if I quantized the KV-cache. I was able to get about 20 tokens/s output this way. The suggested context window of 40k tokens makes the KV cache way too big (it just arena allocates) so I did a very small one of 8k. The model did not refused prompts readily, and the answers were ok, but it would get the system prompt confused with the user prompt (I told it to pretend to be a 9 year old girl who didn't know how to code, and it gave me code answers explained to me as if I were 9 - CoT explicitly stated the USER was 9 and didn't know code). GPU was 99% vRAM saturated and 100% utilized.
+
+```bash
+./build/bin/llama-cli -hf Qwen/Qwen3-14B-GGUF:Q8_0 --jinja --color on  -ngl 30 -fa on -sm row --temp 0.6 --top-k 20 --top-p 0.95 --min-p 0 --presence-penalty 1.5 -c 16384 -n 8192 --no-context-shift -ctk q8_0 -ctv q8_0 -sys "You are a helpful assistant"
+
+```
+
+- 32B: At this size I could fit 20 layers in vRAM (75% vRAM saturated) but there is a massive bottleneck in populating the KV cache. I had to do a few things to relieve it: (1) explicitly tell llama.cpp to utilize many cores (I have 28 cores). (2) Lower the batch size from 2048 to 512 (not sure if this was truly needed). (3) most critical - remove KV quantization. The quant/dequant op appears to be single-threaded, so when this was required, most cores sat idle. Removing this immediately allowed me to leverage all cores. I was able to get 2 tokens/s output this way. Probably could move another layer or two into vRAM and get more like 4, but it's still unusable. The model was more willing to refuse prompts.
+
+```bash
+./build/bin/llama-cli -hf Qwen/Qwen3-32B-GGUF:Q8_0 --jinja --color on  -ngl 20 -fa on -sm row --temp 0.6 --top-k 20 --top-p 0.95 --min-p 0 --presence-penalty 1.5 -c 4096 -n 8192 --no-context-shift -sys "You are a helpful assistant" -t 25 -tb 25 -b 512 -ub 512
+```
