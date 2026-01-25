@@ -234,3 +234,13 @@ sudo ln -s /usr/share/libdrm/amdgpu.ids /opt/amdgpu/share/libdrm/amdgpu.ids
 ```bash
 ./build/bin/llama-cli -hf Qwen/Qwen3-32B-GGUF:Q8_0 --jinja --color on  -ngl 20 -fa on -sm row --temp 0.6 --top-k 20 --top-p 0.95 --min-p 0 --presence-penalty 1.5 -c 4096 -n 8192 --no-context-shift -sys "You are a helpful assistant" -t 25 -tb 25 -b 512 -ub 512
 ```
+
+## Best broken model:
+```bash
+./build/bin/llama-cli -hf mradermacher/Skyfall-31B-v4-GGUF:Q8_0 --jinja --color on  -ngl 20 -fa on -sm row --temp 0.6 --top-k 20 --top-p 0.95 --min-p 0 --presence-penalty 1.5 -c 8192 -n 8192 --no-context-shift -sys "You are a helpful assistant" -t 25 -tb 25 -b 512 -ub 512
+```
+
+taken from
+https://huggingface.co/blog/grimjim/norm-preserving-biprojected-abliteration
+and
+https://huggingface.co/spaces/DontPlanToEnd/UGI-Leaderboard
